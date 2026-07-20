@@ -1,0 +1,1067 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Kringstar Atlas — Financial Overview</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Inter+Tight:wght@600;700;800&display=swap" rel="stylesheet" />
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          navy: { DEFAULT: '#0F172A', 950: '#0A0F1D', 900: '#0F172A', 800: '#151F35' },
+          card: '#1E293B',
+          gold: { DEFAULT: '#B8860B', light: '#D9A82B', dim: '#8A660A' },
+        },
+        fontFamily: {
+          sans: ['Inter', 'ui-sans-serif', 'system-ui'],
+          display: ['Inter Tight', 'Inter', 'ui-sans-serif'],
+        },
+      },
+    },
+  };
+</script>
+
+<style>
+  body {
+    background: radial-gradient(1200px 500px at 10% -10%, rgba(184,134,11,0.08), transparent 60%), #0F172A;
+    min-height: 100vh;
+  }
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: #0F172A; }
+  ::-webkit-scrollbar-thumb { background: #2A3548; border-radius: 8px; }
+  .tabular { font-variant-numeric: tabular-nums; }
+  .nav-item { transition: background .15s, color .15s; }
+  .nav-item.active { background: rgba(184,134,11,0.12); color: #D9A82B; border-left: 2px solid #B8860B; }
+  .page { display: none; }
+  .page.active { display: block; }
+  .skel { background: linear-gradient(90deg,#1E293B 25%,#263349 37%,#1E293B 63%); background-size:400% 100%; animation:shimmer 1.4s ease infinite; border-radius:.5rem; }
+  @keyframes shimmer { 0%{background-position:100% 0} 100%{background-position:-100% 0} }
+  .badge-paid { background: rgba(34,197,94,0.12); color:#4ADE80; border:1px solid rgba(34,197,94,0.3); }
+  .badge-pending { background: rgba(245,158,11,0.12); color:#FBBF24; border:1px solid rgba(245,158,11,0.3); }
+  .badge-overdue { background: rgba(239,68,68,0.12); color:#F87171; border:1px solid rgba(239,68,68,0.3); }
+  .badge-draft { background: rgba(148,163,184,0.12); color:#94A3B8; border:1px solid rgba(148,163,184,0.3); }
+  th.sortable { cursor: pointer; user-select: none; }
+  th.sortable:hover { color: #D9A82B; }
+  @media print {
+    #sidebar, #topbar-actions, .no-print { display: none !important; }
+    body { background: white; color: black; }
+    .bg-card, .bg-navy { background: white !important; border: 1px solid #ddd !important; color: black !important; }
+    * { color: black !important; }
+  }
+</style>
+</head>
+<body class="font-sans text-white antialiased flex">
+
+<!-- ============================= SIDEBAR ============================= -->
+<aside id="sidebar" class="w-56 shrink-0 bg-navy-800 border-r border-white/5 min-h-screen sticky top-0 flex flex-col">
+  <div class="p-5 flex items-center gap-2 border-b border-white/5">
+    <svg width="26" height="26" viewBox="0 0 36 36" fill="none"><rect x="1" y="1" width="34" height="34" rx="9" stroke="#B8860B" stroke-width="1.5"/><path d="M10 25V11L18 18L26 11V25" stroke="#D9A82B" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <span class="font-display font-800 text-sm tracking-tight">Kringstar Atlas</span>
+  </div>
+  <nav class="flex-1 py-3 text-sm">
+    <button class="nav-item active w-full text-left px-5 py-2.5 flex items-center gap-2.5" data-page="overview">🏠 Dashboard</button>
+    <button class="nav-item w-full text-left px-5 py-2.5 flex items-center gap-2.5" data-page="revenue">📈 Revenue</button>
+    <button class="nav-item w-full text-left px-5 py-2.5 flex items-center gap-2.5" data-page="expenses">💸 Expenses</button>
+    <button class="nav-item w-full text-left px-5 py-2.5 flex items-center gap-2.5" data-page="profit">💰 Profit</button>
+    <button class="nav-item w-full text-left px-5 py-2.5 flex items-center gap-2.5" data-page="cashflow">🏦 Cash Flow</button>
+    <button class="nav-item w-full text-left px-5 py-2.5 flex items-center gap-2.5" data-page="savings">💎 Savings</button>
+    <button class="nav-item w-full text-left px-5 py-2.5 flex items-center gap-2.5" data-page="goals">🎯 Goals</button>
+    <button class="nav-item w-full text-left px-5 py-2.5 flex items-center gap-2.5" data-page="forecast">📊 Forecast</button>
+    <button class="nav-item w-full text-left px-5 py-2.5 flex items-center gap-2.5" data-page="alerts">⚠️ Alerts</button>
+    <button class="nav-item w-full text-left px-5 py-2.5 flex items-center gap-2.5" data-page="reports">📑 Reports</button>
+    <button class="nav-item w-full text-left px-5 py-2.5 flex items-center gap-2.5" data-page="settings">⚙️ Settings</button>
+  </nav>
+  <div class="p-4 border-t border-white/5">
+    <div class="bg-card rounded-xl p-3">
+      <p class="text-[10px] uppercase tracking-wider text-slate-400 mb-1">Atlas Health</p>
+      <p id="atlas-health-score" class="font-display font-800 text-xl text-gold-light">— <span class="text-xs text-slate-500 font-normal">/ 100</span></p>
+    </div>
+    <p class="text-[10px] text-slate-600 mt-3 leading-relaxed">A composite of profit margin, runway, invoice health, and goal progress — a quick-glance score, not an audited metric.</p>
+  </div>
+</aside>
+
+<!-- ============================= MAIN ============================= -->
+<main class="flex-1 min-w-0">
+
+  <header class="sticky top-0 z-30 bg-navy/90 backdrop-blur border-b border-white/5 px-6 py-4 flex flex-wrap items-center justify-between gap-3">
+    <div>
+      <h1 class="font-display font-800 text-xl">Financial Overview</h1>
+      <p id="header-subtitle" class="text-xs text-slate-500">Live from Google Sheets · updated moments ago</p>
+    </div>
+    <div id="topbar-actions" class="flex flex-wrap items-center gap-2">
+      <select id="currency-selector" class="bg-card border border-white/10 text-sm rounded-lg px-3 py-2">
+        <option value="NGN">₦ NGN</option>
+        <option value="USD">$ USD (approx.)</option>
+        <option value="GBP">£ GBP (approx.)</option>
+        <option value="EUR">€ EUR (approx.)</option>
+      </select>
+      <button id="export-csv" class="bg-card hover:bg-navy-800 border border-white/10 text-sm rounded-lg px-3 py-2">⬇ CSV</button>
+      <button id="export-xlsx" class="bg-card hover:bg-navy-800 border border-white/10 text-sm rounded-lg px-3 py-2">⬇ Excel</button>
+      <button id="export-print" class="bg-card hover:bg-navy-800 border border-white/10 text-sm rounded-lg px-3 py-2">🖨 Print / PDF</button>
+      <button id="refresh-btn" class="bg-gold hover:bg-gold-light text-navy font-semibold text-sm rounded-lg px-3 py-2">Refresh</button>
+    </div>
+  </header>
+
+  <div id="config-warning" class="hidden bg-gold/90 text-navy text-sm font-semibold text-center py-2 px-4">
+    ⚠️ Set your SHEET_ID and API_KEY in the CONFIG object near the top of the &lt;script&gt; tag.
+  </div>
+  <div id="error-banner" class="hidden mx-6 mt-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+    <p class="font-semibold mb-0.5">Couldn't reach Google Sheets.</p>
+    <p id="error-detail" class="text-red-300/80"></p>
+  </div>
+
+  <div class="p-6 space-y-6">
+
+    <!-- ============================= PAGE: DASHBOARD ============================= -->
+    <section id="page-overview" class="page active space-y-4">
+      <div class="bg-card rounded-2xl p-5 border border-gold/20">
+        <h3 class="font-display font-700 mb-3 flex items-center gap-2">⭐ Executive Brief</h3>
+        <ul id="executive-brief" class="space-y-1.5 text-sm text-slate-200"></ul>
+      </div>
+      <div>
+        <p class="text-xs uppercase tracking-wider text-slate-500 mb-2">Today's Snapshot</p>
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4" id="overview-kpis"></div>
+      </div>
+    </section>
+
+    <!-- ============================= PAGE: REVENUE ============================= -->
+    <section id="page-revenue" class="page space-y-4">
+      <div class="grid grid-cols-2 lg:grid-cols-5 gap-4" id="revenue-kpis"></div>
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div class="bg-card rounded-2xl p-5 border border-white/5">
+          <h3 class="font-display font-700 mb-3">Revenue by Service (YTD)</h3>
+          <div class="relative h-64"><canvas id="service-bar-chart"></canvas></div>
+        </div>
+        <div class="bg-card rounded-2xl p-5 border border-white/5">
+          <h3 class="font-display font-700 mb-3">Revenue Share by Service</h3>
+          <div class="relative h-64"><canvas id="service-pie-chart"></canvas></div>
+        </div>
+      </div>
+      <div class="bg-card rounded-2xl p-5 border border-white/5">
+        <h3 class="font-display font-700 mb-3">Revenue Trend (12 months)</h3>
+        <div class="relative h-64"><canvas id="revenue-trend-chart"></canvas></div>
+      </div>
+      <div class="bg-card rounded-2xl p-5 border border-white/5 overflow-x-auto">
+        <h3 class="font-display font-700 mb-3">Revenue by Client (YTD)</h3>
+        <table class="w-full text-sm min-w-[420px]">
+          <thead><tr class="text-left text-[11px] uppercase tracking-wider text-slate-400 border-b border-white/10">
+            <th class="py-2 px-2">Client</th><th class="py-2 px-2">Revenue (YTD)</th>
+          </tr></thead>
+          <tbody id="client-revenue-table-body" class="divide-y divide-white/5"></tbody>
+        </table>
+      </div>
+      <div class="bg-card rounded-2xl p-5 border border-white/5 overflow-x-auto">
+        <h3 class="font-display font-700 mb-3">Service Breakdown</h3>
+        <table class="w-full text-sm min-w-[640px]">
+          <thead><tr class="text-left text-[11px] uppercase tracking-wider text-slate-400 border-b border-white/10">
+            <th class="py-2 px-2">Service</th><th class="py-2 px-2">Revenue (YTD)</th><th class="py-2 px-2"># Clients</th><th class="py-2 px-2">Avg Contract</th><th class="py-2 px-2">This Month</th>
+          </tr></thead>
+          <tbody id="service-table-body" class="divide-y divide-white/5"></tbody>
+        </table>
+        <p id="service-empty" class="hidden text-center text-slate-500 text-sm py-8">No "Service" column data in Payments yet.</p>
+      </div>
+    </section>
+
+    <!-- ============================= PAGE: EXPENSES ============================= -->
+    <section id="page-expenses" class="page space-y-4">
+      <div id="expenses-not-configured" class="hidden text-center text-slate-500 text-sm py-10 border border-dashed border-white/10 rounded-2xl">No "Expenses" tab found yet.</div>
+      <div id="expenses-content" class="hidden space-y-4">
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4" id="expense-kpis"></div>
+        <div class="grid grid-cols-1 lg:grid-cols-5 gap-4">
+          <div class="lg:col-span-2 bg-card rounded-2xl p-5 border border-white/5">
+            <h3 class="font-display font-700 mb-3">By Category (YTD)</h3>
+            <div class="relative h-56"><canvas id="atlas-expense-donut"></canvas></div>
+            <div id="atlas-expense-legend" class="mt-4 space-y-2 text-xs"></div>
+          </div>
+          <div class="lg:col-span-3 bg-card rounded-2xl p-5 border border-white/5">
+            <h3 class="font-display font-700 mb-3">Monthly Expenses</h3>
+            <div class="relative h-56"><canvas id="atlas-expense-monthly"></canvas></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================= PAGE: PROFIT ============================= -->
+    <section id="page-profit" class="page space-y-4">
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4" id="profit-kpis"></div>
+      <div class="bg-card rounded-2xl p-5 border border-white/5">
+        <h3 class="font-display font-700 mb-3">Monthly Profit Trend</h3>
+        <div class="relative h-64"><canvas id="profit-trend-chart"></canvas></div>
+      </div>
+    </section>
+
+    <!-- ============================= PAGE: CASH FLOW ============================= -->
+    <section id="page-cashflow" class="page space-y-4">
+      <div class="flex gap-2" id="cashflow-granularity">
+        <button data-g="daily" class="cf-btn px-3 py-1.5 rounded-lg text-sm bg-card border border-white/10">Daily</button>
+        <button data-g="weekly" class="cf-btn px-3 py-1.5 rounded-lg text-sm bg-card border border-white/10">Weekly</button>
+        <button data-g="monthly" class="cf-btn px-3 py-1.5 rounded-lg text-sm bg-gold text-navy font-semibold">Monthly</button>
+        <button data-g="quarterly" class="cf-btn px-3 py-1.5 rounded-lg text-sm bg-card border border-white/10">Quarterly</button>
+      </div>
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-card rounded-2xl p-4 border border-white/5"><p class="text-[11px] uppercase text-slate-400 mb-1">Opening Balance</p><p id="cf-opening" class="font-display font-700 text-lg tabular"></p></div>
+        <div class="bg-card rounded-2xl p-4 border border-white/5"><p class="text-[11px] uppercase text-slate-400 mb-1">Cash In</p><p id="cf-in" class="font-display font-700 text-lg text-green-400 tabular"></p></div>
+        <div class="bg-card rounded-2xl p-4 border border-white/5"><p class="text-[11px] uppercase text-slate-400 mb-1">Cash Out</p><p id="cf-out" class="font-display font-700 text-lg text-red-400 tabular"></p></div>
+        <div class="bg-card rounded-2xl p-4 border border-white/5"><p class="text-[11px] uppercase text-slate-400 mb-1">Closing Balance</p><p id="cf-closing" class="font-display font-700 text-lg text-gold-light tabular"></p></div>
+      </div>
+      <div class="bg-card rounded-2xl p-5 border border-white/5">
+        <div class="relative h-64"><canvas id="cashflow-chart"></canvas></div>
+      </div>
+    </section>
+
+    <!-- ============================= PAGE: GOALS ============================= -->
+    <section id="page-goals" class="page space-y-4">
+      <div class="bg-card rounded-2xl p-5 border border-white/5">
+        <div id="atlas-goals-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+        <p id="atlas-goals-empty" class="hidden text-center text-slate-500 text-sm py-8">No goals set yet — add rows to your Goals tab.</p>
+      </div>
+    </section>
+
+    <!-- ============================= PAGE: SAVINGS ============================= -->
+    <section id="page-savings" class="page space-y-4">
+      <div class="bg-card rounded-2xl p-5 border border-white/5">
+        <div id="savings-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+        <p id="savings-empty" class="hidden text-center text-slate-500 text-sm py-8">No Savings tab found yet — add Fund Name, Current Amount, Target Amount columns.</p>
+      </div>
+    </section>
+
+    <!-- ============================= PAGE: FORECAST ============================= -->
+    <section id="page-forecast" class="page space-y-4">
+      <p class="text-xs text-slate-500">Simple linear projection based on your recent trailing growth rate — not a guarantee.</p>
+      <div class="grid grid-cols-2 lg:grid-cols-3 gap-4" id="forecast-kpis"></div>
+      <div class="bg-card rounded-2xl p-5 border border-white/5">
+        <div class="relative h-64"><canvas id="forecast-chart"></canvas></div>
+      </div>
+    </section>
+
+    <!-- ============================= PAGE: ALERTS ============================= -->
+    <section id="page-alerts" class="page space-y-3">
+      <div id="atlas-alerts-list" class="space-y-2"></div>
+      <p id="atlas-alerts-empty" class="hidden text-center text-slate-500 text-sm py-8">No alerts right now — everything looks steady.</p>
+    </section>
+
+    <!-- ============================= PAGE: REPORTS ============================= -->
+    <section id="page-reports" class="page space-y-4">
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div class="bg-card rounded-2xl p-5 border border-white/5">
+          <h3 class="font-display font-700 mb-2">CSV Export</h3>
+          <p class="text-xs text-slate-400 mb-4">Your Clients table as a plain CSV file — opens in any spreadsheet app.</p>
+          <button id="report-csv-btn" class="w-full bg-navy border border-white/10 rounded-lg px-3 py-2 text-sm hover:border-gold/40">⬇ Download CSV</button>
+        </div>
+        <div class="bg-card rounded-2xl p-5 border border-white/5">
+          <h3 class="font-display font-700 mb-2">Excel Export</h3>
+          <p class="text-xs text-slate-400 mb-4">Clients, Payments, and Invoices as a single real .xlsx workbook.</p>
+          <button id="report-xlsx-btn" class="w-full bg-navy border border-white/10 rounded-lg px-3 py-2 text-sm hover:border-gold/40">⬇ Download Excel</button>
+        </div>
+        <div class="bg-card rounded-2xl p-5 border border-white/5">
+          <h3 class="font-display font-700 mb-2">Print / PDF</h3>
+          <p class="text-xs text-slate-400 mb-4">Opens your browser's print dialog with a clean, printable layout of the current page.</p>
+          <button id="report-print-btn" class="w-full bg-navy border border-white/10 rounded-lg px-3 py-2 text-sm hover:border-gold/40">🖨 Print Current Page</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================= PAGE: SETTINGS ============================= -->
+    <section id="page-settings" class="page space-y-4">
+      <div class="bg-card rounded-2xl p-5 border border-white/5 max-w-xl">
+        <h3 class="font-display font-700 mb-4">Currency</h3>
+        <label class="text-xs text-slate-400 block mb-1">Display currency</label>
+        <select id="settings-currency" class="bg-navy border border-white/10 rounded-lg px-3 py-2 text-sm w-full mb-4">
+          <option value="NGN">₦ NGN</option><option value="USD">$ USD</option><option value="GBP">£ GBP</option><option value="EUR">€ EUR</option>
+        </select>
+        <p class="text-xs text-slate-500 mb-3">Approximate conversion rates (₦ per 1 unit) — edit these to match the real rate; they are not fetched live.</p>
+        <div class="grid grid-cols-3 gap-3">
+          <div><label class="text-[11px] text-slate-500 block mb-1">USD</label><input id="fx-usd" type="number" class="bg-navy border border-white/10 rounded-lg px-2 py-1.5 text-sm w-full" /></div>
+          <div><label class="text-[11px] text-slate-500 block mb-1">GBP</label><input id="fx-gbp" type="number" class="bg-navy border border-white/10 rounded-lg px-2 py-1.5 text-sm w-full" /></div>
+          <div><label class="text-[11px] text-slate-500 block mb-1">EUR</label><input id="fx-eur" type="number" class="bg-navy border border-white/10 rounded-lg px-2 py-1.5 text-sm w-full" /></div>
+        </div>
+      </div>
+      <div class="bg-card rounded-2xl p-5 border border-white/5 max-w-xl">
+        <h3 class="font-display font-700 mb-4">Refresh</h3>
+        <label class="text-xs text-slate-400 block mb-1">Auto-refresh interval</label>
+        <select id="settings-refresh" class="bg-navy border border-white/10 rounded-lg px-3 py-2 text-sm w-full">
+          <option value="30000">Every 30 seconds</option>
+          <option value="60000" selected>Every 60 seconds</option>
+          <option value="300000">Every 5 minutes</option>
+        </select>
+      </div>
+      <div class="bg-card rounded-2xl p-5 border border-white/5 max-w-xl">
+        <h3 class="font-display font-700 mb-2">Connected Sheet</h3>
+        <p class="text-xs text-slate-500">Sheet ID and API key are set in the CONFIG object at the top of this file's &lt;script&gt; tag — edit the code directly to change which sheet this dashboard reads from.</p>
+      </div>
+    </section>
+
+  </div>
+</main>
+
+<script>
+/* =====================================================================
+   CONFIG
+   ===================================================================== */
+const CONFIG = {
+  SHEET_ID: '1bkve00DeemvhfacaKMbPbzzDeqe_RQPiOBvtMNTBuK4',
+  API_KEY: 'AIzaSyBeJqbuH4pwoLPqkjLg49fbRo_iiAslBXQ',
+  TABS: {
+    clients: 'Clients', payments: 'Payments', leads: 'Leads Delivered',
+    expenses: 'Expenses', invoices: 'Invoices', cashBalance: 'Cash Balance',
+    goals: 'Goals', savings: 'Savings',
+  },
+  REFRESH_MS: 60000,
+  // Approximate, manually-set FX rates for DISPLAY ONLY — not live market rates.
+  FX_RATES: { NGN: 1, USD: 1 / 1600, GBP: 1 / 2000, EUR: 1 / 1750 },
+  FX_SYMBOLS: { NGN: '₦', USD: '$', GBP: '£', EUR: '€' },
+};
+
+const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const MONTH_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const SERVICE_COLORS = ['#D9A82B','#34D399','#60A5FA','#F87171','#A78BFA','#FB923C','#64748B'];
+
+const state = {
+  clients: [], payments: [], leads: [], expenses: [], invoices: [], cashBalances: [], goals: [], savings: [],
+  expensesConfigured: false, salesConfigured: false, savingsConfigured: false,
+  currency: 'NGN',
+  cashflowGranularity: 'monthly',
+  clientSearch: '', clientFilter: 'all', clientSort: 'name', clientSortDir: 1, clientPage: 1, clientPageSize: 5,
+  charts: {},
+  refreshTimer: null,
+};
+
+/* ------------------------------- helpers ------------------------------- */
+
+function parseMoney(v) {
+  if (v === null || v === undefined) return 0;
+  const n = parseFloat(String(v).replace(/[₦$£€,\s]/g, ''));
+  return isNaN(n) ? 0 : n;
+}
+function convert(amountNGN) {
+  return amountNGN * (CONFIG.FX_RATES[state.currency] || 1);
+}
+function fmtMoney(amountNGN, opts = {}) {
+  const val = convert(amountNGN);
+  const symbol = CONFIG.FX_SYMBOLS[state.currency] || '₦';
+  return symbol + val.toLocaleString('en-US', { maximumFractionDigits: opts.decimals ? 2 : 0 });
+}
+function fmtCompact(amountNGN) {
+  const val = convert(amountNGN);
+  const symbol = CONFIG.FX_SYMBOLS[state.currency] || '₦';
+  if (Math.abs(val) >= 1_000_000) return symbol + (val / 1_000_000).toFixed(2) + 'M';
+  if (Math.abs(val) >= 1_000) return symbol + (val / 1_000).toFixed(1) + 'K';
+  return fmtMoney(amountNGN);
+}
+function parseDate(v) {
+  if (!v) return null;
+  const d = new Date(v);
+  return isNaN(d.getTime()) ? null : d;
+}
+function yearFromRow(row, dateField = 'Date') {
+  const raw = (row['Year'] || '').toString().trim();
+  const n = parseInt(raw, 10);
+  if (!isNaN(n) && n > 2000) return n;
+  const d = parseDate(row[dateField]);
+  return d ? d.getFullYear() : null;
+}
+function monthIndexFromRow(row, dateField = 'Date') {
+  const raw = (row['Month'] || '').toString().trim();
+  if (raw) {
+    const n = parseInt(raw, 10);
+    if (!isNaN(n) && n >= 1 && n <= 12) return n - 1;
+    const idx = MONTH_NAMES.findIndex(m => m.toLowerCase() === raw.toLowerCase());
+    if (idx !== -1) return idx;
+  }
+  const d = parseDate(row[dateField]);
+  return d ? d.getMonth() : null;
+}
+function escapeHtml(v) {
+  if (v === null || v === undefined) return '';
+  return String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+function setText(id, text) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = text;
+}
+function daysBetween(a, b) { return Math.round((b - a) / 86400000); }
+
+/* --------------------------- sheet fetching --------------------------- */
+
+async function fetchTab(tabName) {
+  const range = encodeURIComponent(`${tabName}!A:Z`);
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${range}?key=${CONFIG.API_KEY}`;
+  const res = await fetch(url);
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    throw new Error(`${tabName} (${res.status}): ${body.slice(0, 200)}`);
+  }
+  const data = await res.json();
+  return rowsToObjects(data.values || []);
+}
+async function fetchOptionalTab(tabName) {
+  try { return await fetchTab(tabName); } catch (e) { return null; }
+}
+function rowsToObjects(rows) {
+  if (!rows.length) return [];
+  const headers = rows[0].map(h => (h || '').trim());
+  return rows.slice(1).filter(r => r.some(c => (c || '').toString().trim() !== '')).map(r => {
+    const obj = {};
+    headers.forEach((h, i) => { obj[h] = r[i] !== undefined ? r[i] : ''; });
+    return obj;
+  });
+}
+
+async function loadAllData() {
+  const isConfigured = CONFIG.SHEET_ID && !CONFIG.SHEET_ID.startsWith('PASTE_') && CONFIG.API_KEY && !CONFIG.API_KEY.startsWith('PASTE_');
+  document.getElementById('config-warning').classList.toggle('hidden', isConfigured);
+  if (!isConfigured) return;
+
+  hideError();
+  try {
+    const [clients, payments, leads] = await Promise.all([
+      fetchTab(CONFIG.TABS.clients), fetchTab(CONFIG.TABS.payments), fetchTab(CONFIG.TABS.leads),
+    ]);
+    state.clients = clients; state.payments = payments; state.leads = leads;
+
+    const [expenses, invoices, cashBalances, goals, savings] = await Promise.all([
+      fetchOptionalTab(CONFIG.TABS.expenses), fetchOptionalTab(CONFIG.TABS.invoices),
+      fetchOptionalTab(CONFIG.TABS.cashBalance), fetchOptionalTab(CONFIG.TABS.goals),
+      fetchOptionalTab(CONFIG.TABS.savings),
+    ]);
+    state.expenses = expenses || []; state.invoices = invoices || []; state.cashBalances = cashBalances || [];
+    state.goals = goals || []; state.savings = savings || [];
+    state.expensesConfigured = expenses !== null;
+    state.savingsConfigured = savings !== null;
+    state.salesConfigured = leads.length > 0 && leads.some(l => 'Appointments' in l || 'Deals Closed' in l);
+
+    renderEverything();
+    document.getElementById('header-subtitle').textContent = 'Live from Google Sheets · updated ' + new Date().toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit' });
+  } catch (err) {
+    console.error(err);
+    showError(err.message || 'Unknown error');
+  }
+}
+function showError(detail) { document.getElementById('error-banner').classList.remove('hidden'); document.getElementById('error-detail').textContent = detail; }
+function hideError() { document.getElementById('error-banner').classList.add('hidden'); }
+
+/* ------------------------------ shared calcs ------------------------------ */
+
+function activeClients() { return state.clients.filter(c => (c['Status'] || '').toLowerCase() === 'active'); }
+function currentMRR() { return activeClients().reduce((s, c) => s + parseMoney(c['Monthly Fee']), 0); }
+function revenueForYear(year) { return state.payments.filter(p => yearFromRow(p) === year).reduce((s, p) => s + parseMoney(p['Amount Received']), 0); }
+function revenueYTD() { return revenueForYear(new Date().getFullYear()); }
+function grossProfitForYear(year) {
+  return state.payments.filter(p => yearFromRow(p) === year).reduce((s, p) => {
+    const net = parseMoney(p['Net Revenue']);
+    return s + (net || (parseMoney(p['Amount Received']) - parseMoney(p['Ad Spend'])));
+  }, 0);
+}
+function grossProfitYTD() { return grossProfitForYear(new Date().getFullYear()); }
+function expensesForYear(year) { return state.expenses.filter(e => { const d = parseDate(e['Date']); return d && d.getFullYear() === year; }); }
+function totalExpensesYTD() {
+  const now = new Date();
+  return expensesForYear(now.getFullYear()).filter(e => parseDate(e['Date']) <= now).reduce((s, e) => s + parseMoney(e['Amount']), 0);
+}
+function netProfitYTD() { return grossProfitYTD() - totalExpensesYTD(); }
+function latestCashBalance() {
+  const sorted = state.cashBalances.map(c => ({ date: parseDate(c['Date']), balance: parseMoney(c['Balance']) })).filter(c => c.date).sort((a,b) => b.date - a.date);
+  return sorted.length ? sorted[0] : null;
+}
+function cashBalanceAsOf(date) {
+  const sorted = state.cashBalances.map(c => ({ date: parseDate(c['Date']), balance: parseMoney(c['Balance']) })).filter(c => c.date && c.date <= date).sort((a,b) => b.date - a.date);
+  return sorted.length ? sorted[0].balance : null;
+}
+function monthlyBurnRate() {
+  const now = new Date();
+  let total = 0, count = 0;
+  for (let i = 1; i <= 3; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const monthTotal = state.expenses.filter(e => { const ed = parseDate(e['Date']); return ed && ed.getFullYear() === d.getFullYear() && ed.getMonth() === d.getMonth(); }).reduce((s, e) => s + parseMoney(e['Amount']), 0);
+    if (monthTotal > 0) { total += monthTotal; count++; }
+  }
+  return count ? total / count : 0;
+}
+function outstandingInvoices() { return state.invoices.filter(i => (i['Status'] || '').toLowerCase() !== 'paid'); }
+function overdueInvoices() { return state.invoices.filter(i => (i['Status'] || '').toLowerCase() === 'overdue'); }
+function totalLTV() {
+  const names = new Set(state.payments.map(p => p['Client Name']).filter(Boolean));
+  const total = state.payments.reduce((s, p) => s + parseMoney(p['Amount Received']), 0);
+  return names.size ? total / names.size : 0;
+}
+function totalCAC() {
+  const spend = state.payments.reduce((s, p) => s + parseMoney(p['Ad Spend']), 0);
+  return state.clients.length ? spend / state.clients.length : 0;
+}
+function monthlyRevenueTotals(year) {
+  const totals = new Array(12).fill(0);
+  state.payments.forEach(p => { if (yearFromRow(p) !== year) return; const mi = monthIndexFromRow(p); if (mi === null) return; totals[mi] += parseMoney(p['Amount Received']); });
+  return totals;
+}
+function monthlyExpenseTotals(year) {
+  const totals = new Array(12).fill(0);
+  state.expenses.forEach(e => { const d = parseDate(e['Date']); if (!d || d.getFullYear() !== year) return; totals[d.getMonth()] += parseMoney(e['Amount']); });
+  return totals;
+}
+function getCurrentValueForMetric(metric) {
+  const m = (metric || '').trim().toLowerCase();
+  if (m === 'revenue') return revenueYTD();
+  if (m === 'profit') return netProfitYTD();
+  if (m === 'cash reserve') { const c = latestCashBalance(); return c ? c.balance : 0; }
+  if (m === 'clients') return activeClients().length;
+  if (m === 'mrr') return currentMRR();
+  return 0;
+}
+
+function annualRecurringRevenue() { return currentMRR() * 12; }
+
+function revenueByClient(year) {
+  const byClient = {};
+  state.payments.filter(p => yearFromRow(p) === year).forEach(p => {
+    const name = p['Client Name'] || 'Unknown';
+    byClient[name] = (byClient[name] || 0) + parseMoney(p['Amount Received']);
+  });
+  return Object.entries(byClient).sort((a, b) => b[1] - a[1]);
+}
+
+function highestLowestRevenueMonth(year) {
+  const totals = monthlyRevenueTotals(year);
+  const withData = totals.map((v, i) => ({ v, i })).filter(x => x.v > 0);
+  if (!withData.length) return { highest: null, lowest: null };
+  const highest = withData.reduce((a, b) => (b.v > a.v ? b : a));
+  const lowest = withData.reduce((a, b) => (b.v < a.v ? b : a));
+  return { highest: { month: MONTH_SHORT[highest.i], value: highest.v }, lowest: { month: MONTH_SHORT[lowest.i], value: lowest.v } };
+}
+
+function expenseThisMonth() {
+  const now = new Date();
+  return state.expenses.filter(e => { const d = parseDate(e['Date']); return d && d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth(); }).reduce((s, e) => s + parseMoney(e['Amount']), 0);
+}
+function expenseGrowthMoM() {
+  const now = new Date();
+  const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const thisTotal = expenseThisMonth();
+  const lastTotal = state.expenses.filter(e => { const d = parseDate(e['Date']); return d && d.getFullYear() === lastMonth.getFullYear() && d.getMonth() === lastMonth.getMonth(); }).reduce((s, e) => s + parseMoney(e['Amount']), 0);
+  return lastTotal ? ((thisTotal - lastTotal) / lastTotal) * 100 : null;
+}
+function categorySpendYTD(category) {
+  return expensesForYear(new Date().getFullYear()).filter(e => (e['Category'] || '').trim().toLowerCase() === category.toLowerCase()).reduce((s, e) => s + parseMoney(e['Amount']), 0);
+}
+function biggestExpenseCategory() {
+  const byCat = {};
+  expensesForYear(new Date().getFullYear()).forEach(e => { const cat = (e['Category'] || 'Uncategorized').trim(); byCat[cat] = (byCat[cat] || 0) + parseMoney(e['Amount']); });
+  const entries = Object.entries(byCat);
+  if (!entries.length) return null;
+  return entries.reduce((a, b) => (b[1] > a[1] ? b : a));
+}
+function biggestSingleExpense() {
+  const year = new Date().getFullYear();
+  const rows = expensesForYear(year);
+  if (!rows.length) return null;
+  return rows.reduce((a, b) => (parseMoney(b['Amount']) > parseMoney(a['Amount']) ? b : a));
+}
+function monthlyProfitTotals(year) {
+  const rev = monthlyRevenueTotals(year);
+  const exp = monthlyExpenseTotals(year);
+  return rev.map((v, i) => v - exp[i]);
+}
+function trailing12MonthsRevenue() {
+  const now = new Date();
+  const labels = [], values = [];
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const total = state.payments.filter(p => yearFromRow(p) === d.getFullYear() && monthIndexFromRow(p) === d.getMonth()).reduce((s, p) => s + parseMoney(p['Amount Received']), 0);
+    labels.push(MONTH_SHORT[d.getMonth()] + " '" + String(d.getFullYear()).slice(2));
+    values.push(total);
+  }
+  return { labels, values };
+}
+
+/* ------------------------------ atlas health score ------------------------------ */
+
+function computeAtlasHealth() {
+  const revenue = revenueYTD();
+  const profit = netProfitYTD();
+  const marginScore = revenue ? Math.max(0, Math.min(100, (profit / revenue) * 100 * 2)) : 50;
+  const cash = latestCashBalance();
+  const burn = monthlyBurnRate();
+  const runway = (cash && burn > 0) ? cash.balance / burn : 12;
+  const runwayScore = Math.max(0, Math.min(100, (runway / 6) * 100));
+  const invoices = state.invoices;
+  const invoiceScore = invoices.length ? (invoices.filter(i => (i['Status']||'').toLowerCase() === 'paid').length / invoices.length) * 100 : 70;
+  const goalScores = state.goals.map(g => { const t = parseMoney(g['Target']); const c = getCurrentValueForMetric(g['Metric']); return t ? Math.min(100, (c / t) * 100) : 0; });
+  const goalScore = goalScores.length ? goalScores.reduce((a,b)=>a+b,0) / goalScores.length : 60;
+  const composite = (marginScore * 0.3) + (runwayScore * 0.25) + (invoiceScore * 0.2) + (goalScore * 0.25);
+  return Math.round(Math.max(0, Math.min(100, composite)));
+}
+
+/* ------------------------------ page: overview ------------------------------ */
+
+function generateExecutiveBrief() {
+  const now = new Date();
+  const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const thisMonthRev = state.payments.filter(p => yearFromRow(p)===now.getFullYear() && monthIndexFromRow(p)===now.getMonth()).reduce((s,p)=>s+parseMoney(p['Amount Received']),0);
+  const lastMonthRev = state.payments.filter(p => yearFromRow(p)===lastMonth.getFullYear() && monthIndexFromRow(p)===lastMonth.getMonth()).reduce((s,p)=>s+parseMoney(p['Amount Received']),0);
+  const growth = lastMonthRev ? ((thisMonthRev - lastMonthRev) / lastMonthRev) * 100 : null;
+  const revenue = revenueYTD();
+  const net = netProfitYTD();
+  const margin = revenue ? (net/revenue)*100 : null;
+  const expGrowth = expenseGrowthMoM();
+  const overdue = overdueInvoices();
+  const cash = latestCashBalance();
+  const burn = monthlyBurnRate();
+  const runway = (cash && burn>0) ? cash.balance/burn : null;
+
+  const lines = [];
+  if (growth !== null) lines.push(`Revenue ${growth>=0?'increased':'decreased'} ${Math.abs(growth).toFixed(0)}% compared to last month.`);
+  if (margin !== null) lines.push(`Profit margin is at ${margin.toFixed(0)}%.`);
+  if (expGrowth !== null) lines.push(`Expenses are ${expGrowth>=0?'up':'down'} ${Math.abs(expGrowth).toFixed(0)}% vs last month.`);
+  if (overdue.length) lines.push(`${overdue.length} invoice${overdue.length===1?' is':'s are'} overdue.`);
+  else if (state.invoices.length) lines.push(`No overdue invoices right now.`);
+  if (runway !== null) lines.push(`Cash runway is ${runway.toFixed(1)} months at your current burn rate.`);
+  state.goals.forEach(g => {
+    const t = parseMoney(g['Target']); const c = getCurrentValueForMetric(g['Metric']);
+    if (t) lines.push(`You're ${Math.min(100,(c/t)*100).toFixed(0)}% toward your ${escapeHtml(g['Metric'])} goal.`);
+  });
+  if (!lines.length) lines.push('Log a few payments, expenses, and a cash balance to unlock your brief.');
+  return lines;
+}
+
+function renderOverview() {
+  document.getElementById('executive-brief').innerHTML = generateExecutiveBrief().map(l => `<li class="flex gap-2"><span class="text-gold-light">•</span>${l}</li>`).join('');
+
+  const cash = latestCashBalance();
+  const now = new Date();
+  const thisMonthRev = state.payments.filter(p=>yearFromRow(p)===now.getFullYear()&&monthIndexFromRow(p)===now.getMonth()).reduce((s,p)=>s+parseMoney(p['Amount Received']),0);
+  const thisMonthExp = expenseThisMonth();
+  const thisMonthProfit = thisMonthRev - thisMonthExp;
+  const activeCount = activeClients().length;
+  const outstanding = outstandingInvoices();
+  const outstandingAmt = outstanding.reduce((s,i)=>s+parseMoney(i['Amount']),0);
+  const alertCount = overdueInvoices().length;
+
+  const cards = [
+    { label: 'Cash Balance', value: cash ? fmtMoney(cash.balance) : '—' },
+    { label: 'Revenue This Month', value: fmtMoney(thisMonthRev) },
+    { label: 'Profit This Month', value: fmtMoney(thisMonthProfit), color: thisMonthProfit>=0?'text-green-400':'text-red-400' },
+    { label: 'Active Clients', value: String(activeCount) },
+    { label: 'Outstanding Invoices', value: fmtMoney(outstandingAmt), sub: `${outstanding.length} invoice${outstanding.length===1?'':'s'}` },
+    { label: 'Financial Alerts', value: String(alertCount), color: alertCount>0?'text-red-400':'text-green-400', sub: alertCount>0?'need attention':'all clear' },
+  ];
+
+  document.getElementById('overview-kpis').innerHTML = cards.map(c => `
+    <div class="bg-card rounded-2xl p-4 border border-white/5">
+      <p class="text-[11px] uppercase tracking-wider text-slate-400 mb-2">${c.label}</p>
+      <p class="font-display font-800 text-xl tabular ${c.color || ''}">${c.value}</p>
+      ${c.sub ? `<p class="text-[11px] text-slate-500 mt-1">${c.sub}</p>` : ''}
+    </div>
+  `).join('');
+
+  document.getElementById('atlas-health-score').innerHTML = computeAtlasHealth() + ' <span class="text-xs text-slate-500 font-normal">/ 100</span>';
+}
+
+/* ------------------------------ page: revenue ------------------------------ */
+
+function renderRevenuePage() {
+  const now = new Date();
+  const year = now.getFullYear();
+
+  const mrr = currentMRR();
+  const arr = annualRecurringRevenue();
+  const thisMonthRev = state.payments.filter(p=>yearFromRow(p)===year&&monthIndexFromRow(p)===now.getMonth()).reduce((s,p)=>s+parseMoney(p['Amount Received']),0);
+  const { highest, lowest } = highestLowestRevenueMonth(year);
+  const revKpis = [
+    { label: 'Revenue This Month', value: fmtMoney(thisMonthRev) },
+    { label: 'MRR', value: fmtMoney(mrr) },
+    { label: 'ARR', value: fmtMoney(arr) },
+    { label: 'Highest Month', value: highest ? `${highest.month} — ${fmtCompact(highest.value)}` : '—' },
+    { label: 'Lowest Month', value: lowest ? `${lowest.month} — ${fmtCompact(lowest.value)}` : '—' },
+  ];
+  document.getElementById('revenue-kpis').innerHTML = revKpis.map(c => `
+    <div class="bg-card rounded-2xl p-4 border border-white/5"><p class="text-[11px] uppercase text-slate-400 mb-2">${c.label}</p><p class="font-display font-800 text-lg tabular">${c.value}</p></div>
+  `).join('');
+
+  const byService = {};
+  state.payments.filter(p => yearFromRow(p) === year).forEach(p => {
+    const svc = (p['Service'] || '').trim();
+    if (!svc) return;
+    if (!byService[svc]) byService[svc] = { revenue: 0, clients: new Set(), thisMonth: 0 };
+    byService[svc].revenue += parseMoney(p['Amount Received']);
+    byService[svc].clients.add(p['Client Name']);
+    if (monthIndexFromRow(p) === now.getMonth()) byService[svc].thisMonth += parseMoney(p['Amount Received']);
+  });
+  const services = Object.keys(byService);
+  document.getElementById('service-empty').classList.toggle('hidden', services.length > 0);
+
+  const revenues = services.map(s => byService[s].revenue);
+  const colors = services.map((_, i) => SERVICE_COLORS[i % SERVICE_COLORS.length]);
+
+  ['service-bar-chart', 'service-pie-chart'].forEach(id => { if (state.charts[id]) state.charts[id].destroy(); });
+
+  if (services.length) {
+    state.charts['service-bar-chart'] = new Chart(document.getElementById('service-bar-chart').getContext('2d'), {
+      type: 'bar',
+      data: { labels: services, datasets: [{ data: revenues, backgroundColor: colors, borderRadius: 6 }] },
+      options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', plugins: { legend: { display: false } },
+        scales: { x: { ticks: { color: '#64748B', callback: v => fmtCompact(v) } }, y: { ticks: { color: '#CBD5E1' } } } },
+    });
+    state.charts['service-pie-chart'] = new Chart(document.getElementById('service-pie-chart').getContext('2d'), {
+      type: 'doughnut',
+      data: { labels: services, datasets: [{ data: revenues, backgroundColor: colors, borderWidth: 0 }] },
+      options: { responsive: true, maintainAspectRatio: false, cutout: '65%', plugins: { legend: { position: 'bottom', labels: { color: '#CBD5E1', boxWidth: 10, font: { size: 10 } } } } },
+    });
+  }
+
+  document.getElementById('service-table-body').innerHTML = services.map((s, i) => {
+    const d = byService[s];
+    const avg = d.clients.size ? d.revenue / d.clients.size : 0;
+    return `<tr><td class="py-2 px-2 font-medium">${escapeHtml(s)}</td><td class="py-2 px-2 tabular">${fmtMoney(d.revenue)}</td><td class="py-2 px-2 tabular">${d.clients.size}</td><td class="py-2 px-2 tabular">${fmtMoney(avg)}</td><td class="py-2 px-2 tabular">${fmtMoney(d.thisMonth)}</td></tr>`;
+  }).join('');
+
+  document.getElementById('client-revenue-table-body').innerHTML = revenueByClient(year).map(([name, rev]) => `
+    <tr><td class="py-2 px-2 font-medium">${escapeHtml(name)}</td><td class="py-2 px-2 tabular">${fmtMoney(rev)}</td></tr>
+  `).join('');
+
+  if (state.charts['revenue-trend-chart']) state.charts['revenue-trend-chart'].destroy();
+  const trailing = trailing12MonthsRevenue();
+  state.charts['revenue-trend-chart'] = new Chart(document.getElementById('revenue-trend-chart').getContext('2d'), {
+    type: 'line',
+    data: { labels: trailing.labels, datasets: [{ data: trailing.values, borderColor: '#D9A82B', backgroundColor: 'rgba(217,168,43,0.1)', fill: true, tension: 0.3 }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+      scales: { x: { ticks: { color: '#64748B' } }, y: { ticks: { color: '#64748B', callback: v => fmtCompact(v) } } } },
+  });
+}
+
+/* ------------------------------ page: expenses ------------------------------ */
+
+const EXPENSE_COLORS = { marketing:'#D9A82B', software:'#60A5FA', operations:'#34D399', office:'#A78BFA', 'personal withdrawals':'#F87171' };
+function categoryColor(c) { return EXPENSE_COLORS[(c||'').trim().toLowerCase()] || '#64748B'; }
+
+function renderExpensesPage() {
+  document.getElementById('expenses-not-configured').classList.toggle('hidden', state.expensesConfigured);
+  document.getElementById('expenses-content').classList.toggle('hidden', !state.expensesConfigured);
+  if (!state.expensesConfigured) return;
+
+  const growth = expenseGrowthMoM();
+  const biggestCat = biggestExpenseCategory();
+  const biggestSingle = biggestSingleExpense();
+  const marketing = categorySpendYTD('Marketing');
+  const software = categorySpendYTD('Software');
+  const withdrawals = categorySpendYTD('Personal Withdrawals');
+
+  const kpis = [
+    { label: 'Expenses This Month', value: fmtMoney(expenseThisMonth()) },
+    { label: 'Expense Growth (MoM)', value: growth===null?'—':(growth>=0?'+':'')+growth.toFixed(1)+'%' },
+    { label: 'Biggest Category (YTD)', value: biggestCat ? `${escapeHtml(biggestCat[0])} — ${fmtCompact(biggestCat[1])}` : '—' },
+    { label: 'Biggest Single Expense', value: biggestSingle ? `${fmtCompact(parseMoney(biggestSingle['Amount']))} — ${escapeHtml(biggestSingle['Subcategory']||biggestSingle['Category']||'')}` : '—' },
+    { label: 'Marketing Spend (YTD)', value: fmtMoney(marketing) },
+    { label: 'Software Spend (YTD)', value: fmtMoney(software) },
+    { label: 'Owner Withdrawals (YTD)', value: fmtMoney(withdrawals) },
+  ];
+  document.getElementById('expense-kpis').innerHTML = kpis.map(c => `
+    <div class="bg-card rounded-2xl p-4 border border-white/5"><p class="text-[11px] uppercase text-slate-400 mb-2">${c.label}</p><p class="font-display font-800 text-lg tabular">${c.value}</p></div>
+  `).join('');
+
+  const year = new Date().getFullYear();
+  const byCat = {};
+  expensesForYear(year).forEach(e => { const cat = (e['Category']||'Uncategorized').trim(); byCat[cat] = (byCat[cat]||0) + parseMoney(e['Amount']); });
+  const cats = Object.keys(byCat);
+  const vals = cats.map(c => byCat[c]);
+  const total = vals.reduce((a,b)=>a+b,0);
+  const colors = cats.map(categoryColor);
+
+  if (state.charts['atlas-expense-donut']) state.charts['atlas-expense-donut'].destroy();
+  if (cats.length) {
+    state.charts['atlas-expense-donut'] = new Chart(document.getElementById('atlas-expense-donut').getContext('2d'), {
+      type: 'doughnut', data: { labels: cats, datasets: [{ data: vals, backgroundColor: colors, borderWidth: 0 }] },
+      options: { responsive: true, maintainAspectRatio: false, cutout: '68%', plugins: { legend: { display: false } } },
+    });
+  }
+  document.getElementById('atlas-expense-legend').innerHTML = cats.map((c,i) => {
+    const pct = total ? ((vals[i]/total)*100).toFixed(1) : '0.0';
+    return `<div class="flex items-center justify-between"><span class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-sm inline-block" style="background:${colors[i]}"></span>${escapeHtml(c)}</span><span class="tabular text-slate-400">${fmtCompact(vals[i])} · ${pct}%</span></div>`;
+  }).join('');
+
+  if (state.charts['atlas-expense-monthly']) state.charts['atlas-expense-monthly'].destroy();
+  const totals = monthlyExpenseTotals(year);
+  state.charts['atlas-expense-monthly'] = new Chart(document.getElementById('atlas-expense-monthly').getContext('2d'), {
+    type: 'bar', data: { labels: MONTH_SHORT, datasets: [{ data: totals, backgroundColor: '#3B4966', borderRadius: 6 }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+      scales: { x: { ticks: { color: '#64748B' } }, y: { ticks: { color: '#64748B', callback: v => fmtCompact(v) } } } },
+  });
+}
+
+function renderProfitPage() {
+  const revenue = revenueYTD();
+  const gross = grossProfitYTD();
+  const net = netProfitYTD();
+  const grossMargin = revenue ? (gross/revenue)*100 : null;
+  const netMargin = revenue ? (net/revenue)*100 : null;
+  const cash = latestCashBalance();
+  const burn = monthlyBurnRate();
+  const runway = (cash && burn>0) ? cash.balance/burn : null;
+
+  const kpis = [
+    { label: 'Gross Profit (YTD)', value: fmtMoney(gross) },
+    { label: 'Net Profit (YTD)', value: fmtMoney(net), color: 'text-gold-light' },
+    { label: 'Gross Margin', value: grossMargin===null?'—':grossMargin.toFixed(1)+'%' },
+    { label: 'Net Margin', value: netMargin===null?'—':netMargin.toFixed(1)+'%' },
+    { label: 'Burn Rate / Mo', value: burn>0?fmtMoney(burn):'—' },
+    { label: 'Runway', value: runway===null?'—':(runway>=24?'24+ mo':runway.toFixed(1)+' mo') },
+    { label: 'CAC', value: fmtMoney(totalCAC()) },
+    { label: 'LTV', value: fmtMoney(totalLTV()) },
+  ];
+  document.getElementById('profit-kpis').innerHTML = kpis.map(c => `
+    <div class="bg-card rounded-2xl p-4 border border-white/5"><p class="text-[11px] uppercase text-slate-400 mb-2">${c.label}</p><p class="font-display font-800 text-lg tabular ${c.color||''}">${c.value}</p></div>
+  `).join('');
+
+  const year = new Date().getFullYear();
+  const totals = monthlyProfitTotals(year);
+  if (state.charts['profit-trend-chart']) state.charts['profit-trend-chart'].destroy();
+  state.charts['profit-trend-chart'] = new Chart(document.getElementById('profit-trend-chart').getContext('2d'), {
+    type: 'bar',
+    data: { labels: MONTH_SHORT, datasets: [{ data: totals, backgroundColor: totals.map(v => v>=0?'#34D399':'#F87171'), borderRadius: 6 }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+      scales: { x: { ticks: { color: '#64748B' } }, y: { ticks: { color: '#64748B', callback: v => fmtCompact(v) } } } },
+  });
+}
+
+/* ------------------------------ page: cash flow ------------------------------ */
+
+function cashFlowSeries(granularity) {
+  const now = new Date();
+  const buckets = [];
+  let count, unitDays;
+  if (granularity === 'daily') { count = 14; unitDays = 1; }
+  else if (granularity === 'weekly') { count = 12; unitDays = 7; }
+  else if (granularity === 'quarterly') { count = 4; unitDays = 91; }
+  else { count = 6; unitDays = 30; }
+
+  for (let i = count - 1; i >= 0; i--) {
+    const end = new Date(now.getTime() - i * unitDays * 86400000);
+    const start = new Date(end.getTime() - unitDays * 86400000);
+    const cashIn = state.payments.filter(p => { const d = parseDate(p['Date']); return d && d > start && d <= end; }).reduce((s,p)=>s+parseMoney(p['Amount Received']),0);
+    const cashOut = state.expenses.filter(e => { const d = parseDate(e['Date']); return d && d > start && d <= end; }).reduce((s,e)=>s+parseMoney(e['Amount']),0);
+    const label = granularity === 'daily' ? end.toLocaleDateString('en-NG',{day:'numeric',month:'short'})
+      : granularity === 'weekly' ? 'Wk of ' + start.toLocaleDateString('en-NG',{day:'numeric',month:'short'})
+      : granularity === 'quarterly' ? 'Q ending ' + end.toLocaleDateString('en-NG',{month:'short',year:'2-digit'})
+      : end.toLocaleDateString('en-NG',{month:'short'});
+    buckets.push({ start, end, label, cashIn, cashOut });
+  }
+  return buckets;
+}
+
+function renderCashFlowPage() {
+  const buckets = cashFlowSeries(state.cashflowGranularity);
+  const totalIn = buckets.reduce((s,b)=>s+b.cashIn,0);
+  const totalOut = buckets.reduce((s,b)=>s+b.cashOut,0);
+  const periodStart = buckets[0].start;
+  const periodEnd = buckets[buckets.length-1].end;
+  const opening = cashBalanceAsOf(periodStart);
+  const closing = cashBalanceAsOf(periodEnd) ?? (opening !== null ? opening + totalIn - totalOut : null);
+
+  setText('cf-opening', opening !== null ? fmtMoney(opening) : '—');
+  setText('cf-in', fmtMoney(totalIn));
+  setText('cf-out', fmtMoney(totalOut));
+  setText('cf-closing', closing !== null ? fmtMoney(closing) : '—');
+
+  if (state.charts['cashflow-chart']) state.charts['cashflow-chart'].destroy();
+  state.charts['cashflow-chart'] = new Chart(document.getElementById('cashflow-chart').getContext('2d'), {
+    type: 'line',
+    data: { labels: buckets.map(b=>b.label), datasets: [
+      { label: 'Cash In', data: buckets.map(b=>b.cashIn), borderColor: '#34D399', backgroundColor: 'rgba(52,211,153,0.08)', fill: true, tension: 0.3 },
+      { label: 'Cash Out', data: buckets.map(b=>b.cashOut), borderColor: '#F87171', backgroundColor: 'rgba(248,113,113,0.08)', fill: true, tension: 0.3 },
+    ] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#CBD5E1' } } },
+      scales: { x: { ticks: { color: '#64748B' } }, y: { ticks: { color: '#64748B', callback: v => fmtCompact(v) } } } },
+  });
+}
+
+/* ------------------------------ page: savings ------------------------------ */
+
+function renderSavingsPage() {
+  document.getElementById('savings-empty').classList.toggle('hidden', state.savingsConfigured && state.savings.length > 0);
+  document.getElementById('savings-grid').innerHTML = state.savings.map(s => {
+    const current = parseMoney(s['Current Amount']);
+    const target = parseMoney(s['Target Amount']);
+    const progress = target ? Math.min(100, (current/target)*100) : 0;
+    return `<div class="bg-navy rounded-2xl p-4 border border-white/5">
+      <p class="text-[11px] uppercase text-slate-400 mb-1">${escapeHtml(s['Fund Name'])}</p>
+      <p class="font-display font-700 text-lg mb-2">${fmtMoney(current)} <span class="text-slate-500 text-sm font-normal">/ ${fmtMoney(target)}</span></p>
+      <div class="w-full h-2 bg-white/5 rounded-full overflow-hidden"><div class="h-full rounded-full bg-gold-light" style="width:${progress}%"></div></div>
+    </div>`;
+  }).join('');
+}
+
+/* ------------------------------ page: forecast ------------------------------ */
+
+function renderForecastPage() {
+  const year = new Date().getFullYear();
+  const totals = monthlyRevenueTotals(year);
+  const now = new Date();
+  const recentMonths = [];
+  for (let i = 1; i <= 3; i++) { const d = new Date(now.getFullYear(), now.getMonth()-i+1, 1); const m = totals[d.getMonth()]; if (m>0) recentMonths.push(m); }
+
+  let avgGrowth = 0;
+  if (recentMonths.length >= 2) {
+    const growthRates = [];
+    for (let i=1;i<recentMonths.length;i++) { if (recentMonths[i-1]>0) growthRates.push((recentMonths[i]-recentMonths[i-1])/recentMonths[i-1]); }
+    avgGrowth = growthRates.length ? growthRates.reduce((a,b)=>a+b,0)/growthRates.length : 0;
+  }
+  const lastActual = recentMonths[recentMonths.length-1] || revenueForYear(year)/Math.max(1, now.getMonth()+1);
+
+  const nextMonth = lastActual * (1+avgGrowth);
+  const quarter = nextMonth + nextMonth*(1+avgGrowth) + nextMonth*Math.pow(1+avgGrowth,2);
+  const annual = revenueYTD() + (nextMonth * (12 - (now.getMonth()+1)));
+  const margin = revenueYTD() ? netProfitYTD()/revenueYTD() : 0;
+  const projectedProfit = annual * margin;
+  const cash = latestCashBalance();
+  const burn = monthlyBurnRate();
+  const cashForecast = cash ? cash.balance + nextMonth - burn : null;
+  const expectedMRR = currentMRR() * (1+avgGrowth);
+
+  const cards = [
+    { label: 'Next Month Revenue', value: fmtMoney(nextMonth) }, { label: 'Quarter Revenue', value: fmtMoney(quarter) },
+    { label: 'Annual Revenue (proj.)', value: fmtMoney(annual) }, { label: 'Projected Profit', value: fmtMoney(projectedProfit) },
+    { label: 'Cash Forecast (next mo.)', value: cashForecast===null?'—':fmtMoney(cashForecast) }, { label: 'Expected MRR', value: fmtMoney(expectedMRR) },
+  ];
+  document.getElementById('forecast-kpis').innerHTML = cards.map(c => `
+    <div class="bg-card rounded-2xl p-4 border border-white/5"><p class="text-[11px] uppercase text-slate-400 mb-2">${c.label}</p><p class="font-display font-800 text-xl tabular">${c.value}</p></div>
+  `).join('');
+
+  const projectedMonths = [];
+  const labels = [];
+  let running = lastActual;
+  for (let i=0;i<3;i++) { running = running*(1+avgGrowth); projectedMonths.push(running); const d = new Date(now.getFullYear(), now.getMonth()+1+i, 1); labels.push(MONTH_SHORT[d.getMonth()]); }
+
+  if (state.charts['forecast-chart']) state.charts['forecast-chart'].destroy();
+  const actualLabels = MONTH_SHORT.slice(0, now.getMonth()+1);
+  const actualData = totals.slice(0, now.getMonth()+1);
+  state.charts['forecast-chart'] = new Chart(document.getElementById('forecast-chart').getContext('2d'), {
+    type: 'line',
+    data: { labels: [...actualLabels, ...labels], datasets: [
+      { label: 'Actual', data: [...actualData, ...new Array(labels.length).fill(null)], borderColor: '#D9A82B', tension: 0.3 },
+      { label: 'Projected', data: [...new Array(actualData.length-1).fill(null), actualData[actualData.length-1], ...projectedMonths], borderColor: '#60A5FA', borderDash: [5,5], tension: 0.3 },
+    ] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#CBD5E1' } } },
+      scales: { x: { ticks: { color: '#64748B' } }, y: { ticks: { color: '#64748B', callback: v=>fmtCompact(v) } } } },
+  });
+}
+
+/* ------------------------------ page: alerts ------------------------------ */
+
+function renderAlertsPage() {
+  const alerts = [];
+  const overdue = overdueInvoices();
+  overdue.forEach(i => alerts.push({ level: 'danger', text: `${escapeHtml(i['Client Name'])} invoice is overdue — ${fmtMoney(parseMoney(i['Amount']))}` }));
+
+  const cash = latestCashBalance();
+  const burn = monthlyBurnRate();
+  if (cash && burn>0 && cash.balance/burn < 2) alerts.push({ level: 'danger', text: 'Runway is under 2 months at current burn rate.' });
+
+  state.goals.forEach(g => { const t=parseMoney(g['Target']); const c=getCurrentValueForMetric(g['Metric']); if (t && c/t>=1) alerts.push({ level:'success', text: `${escapeHtml(g['Metric'])} goal reached! 🎉` }); });
+
+  state.expenses.forEach(e => { const amt=parseMoney(e['Amount']); if (amt>=300000) alerts.push({ level:'warning', text: `Large expense logged: ${fmtMoney(amt)} — ${escapeHtml(e['Subcategory']||e['Category']||'uncategorized')}` }); });
+
+  const now = new Date();
+  const lastMonth = new Date(now.getFullYear(), now.getMonth()-1, 1);
+  const thisMonthAdSpend = state.payments.filter(p=>yearFromRow(p)===now.getFullYear()&&monthIndexFromRow(p)===now.getMonth()).reduce((s,p)=>s+parseMoney(p['Ad Spend']),0);
+  const lastMonthAdSpend = state.payments.filter(p=>yearFromRow(p)===lastMonth.getFullYear()&&monthIndexFromRow(p)===lastMonth.getMonth()).reduce((s,p)=>s+parseMoney(p['Ad Spend']),0);
+  if (lastMonthAdSpend>0 && thisMonthAdSpend > lastMonthAdSpend*1.15) alerts.push({ level:'warning', text: `Ad spend is up ${(((thisMonthAdSpend-lastMonthAdSpend)/lastMonthAdSpend)*100).toFixed(0)}% vs last month.` });
+
+  document.getElementById('atlas-alerts-empty').classList.toggle('hidden', alerts.length > 0);
+  const colorFor = l => l==='danger' ? 'border-red-500/30 bg-red-500/10 text-red-300' : l==='success' ? 'border-green-500/30 bg-green-500/10 text-green-300' : 'border-gold/25 bg-gold/5 text-slate-200';
+  document.getElementById('atlas-alerts-list').innerHTML = alerts.map(a => `<div class="rounded-xl border px-4 py-3 text-sm ${colorFor(a.level)}">${a.text}</div>`).join('');
+}
+
+/* ------------------------------ orchestration ------------------------------ */
+
+function renderEverything() {
+  renderOverview(); renderRevenuePage(); renderExpensesPage(); renderProfitPage();
+  renderCashFlowPage(); renderSavingsPage(); renderGoalsPage();
+  renderForecastPage(); renderAlertsPage();
+}
+
+/* ------------------------------ page nav ------------------------------ */
+
+document.querySelectorAll('.nav-item').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('page-' + btn.dataset.page).classList.add('active');
+  });
+});
+
+document.getElementById('currency-selector').addEventListener('change', e => { state.currency = e.target.value; renderEverything(); });
+
+document.querySelectorAll('.cf-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.cf-btn').forEach(b => b.className = 'cf-btn px-3 py-1.5 rounded-lg text-sm bg-card border border-white/10');
+    btn.className = 'cf-btn px-3 py-1.5 rounded-lg text-sm bg-gold text-navy font-semibold';
+    state.cashflowGranularity = btn.dataset.g;
+    renderCashFlowPage();
+  });
+});
+
+document.getElementById('refresh-btn').addEventListener('click', loadAllData);
+document.getElementById('export-print').addEventListener('click', () => window.print());
+
+document.getElementById('export-csv').addEventListener('click', () => {
+  const rows = [['Client Name','Plan','Monthly Fee','Status'], ...state.clients.map(c => [c['Client Name'],c['Plan'],c['Monthly Fee'],c['Status']])];
+  const csv = rows.map(r => r.map(v => `"${(v||'').toString().replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'kringstar-clients.csv'; a.click();
+});
+
+document.getElementById('export-xlsx').addEventListener('click', () => {
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(state.clients), 'Clients');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(state.payments), 'Payments');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(state.invoices), 'Invoices');
+  XLSX.writeFile(wb, 'kringstar-atlas-export.xlsx');
+});
+
+/* ------------------------------ settings & reports wiring ------------------------------ */
+
+document.getElementById('settings-currency').addEventListener('change', e => {
+  state.currency = e.target.value;
+  document.getElementById('currency-selector').value = e.target.value;
+  renderEverything();
+});
+document.getElementById('currency-selector').addEventListener('change', e => {
+  document.getElementById('settings-currency').value = e.target.value;
+});
+
+document.getElementById('fx-usd').value = (1 / CONFIG.FX_RATES.USD).toFixed(0);
+document.getElementById('fx-gbp').value = (1 / CONFIG.FX_RATES.GBP).toFixed(0);
+document.getElementById('fx-eur').value = (1 / CONFIG.FX_RATES.EUR).toFixed(0);
+['usd','gbp','eur'].forEach(code => {
+  document.getElementById('fx-' + code).addEventListener('change', e => {
+    const perOne = parseFloat(e.target.value);
+    if (perOne > 0) { CONFIG.FX_RATES[code.toUpperCase()] = 1 / perOne; renderEverything(); }
+  });
+});
+
+document.getElementById('settings-refresh').addEventListener('change', e => {
+  CONFIG.REFRESH_MS = parseInt(e.target.value, 10);
+  clearInterval(state.refreshTimer);
+  state.refreshTimer = setInterval(loadAllData, CONFIG.REFRESH_MS);
+});
+
+document.getElementById('report-csv-btn').addEventListener('click', () => document.getElementById('export-csv').click());
+document.getElementById('report-xlsx-btn').addEventListener('click', () => document.getElementById('export-xlsx').click());
+document.getElementById('report-print-btn').addEventListener('click', () => window.print());
+
+/* ------------------------------ boot ------------------------------ */
+
+loadAllData();
+state.refreshTimer = setInterval(loadAllData, CONFIG.REFRESH_MS);
+</script>
+</body>
+</html>
