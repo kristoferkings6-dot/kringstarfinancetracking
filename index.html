@@ -898,6 +898,25 @@ function renderSavingsPage() {
   }).join('');
 }
 
+/* ------------------------------ page: goals ------------------------------ */
+
+function renderGoalsPage() {
+  document.getElementById('atlas-goals-empty').classList.toggle('hidden', state.goals.length > 0);
+  document.getElementById('atlas-goals-grid').innerHTML = state.goals.map(g => {
+    const target = parseMoney(g['Target']);
+    const current = getCurrentValueForMetric(g['Metric']);
+    const progress = target ? Math.min(100, (current / target) * 100) : 0;
+    const isMoneyMetric = (g['Metric'] || '').trim().toLowerCase() !== 'clients';
+    const fmt = v => isMoneyMetric ? fmtMoney(v) : v.toLocaleString();
+    return `<div class="bg-navy rounded-2xl p-4 border border-white/5">
+      <p class="text-[11px] uppercase text-slate-400 mb-1">${escapeHtml(g['Metric'])}</p>
+      <p class="font-display font-700 text-lg mb-2">${fmt(current)} <span class="text-slate-500 text-sm font-normal">/ ${fmt(target)}</span></p>
+      <div class="w-full h-2 bg-white/5 rounded-full overflow-hidden"><div class="h-full rounded-full bg-gold-light" style="width:${progress}%"></div></div>
+      <p class="text-[11px] text-slate-500 mt-2">${progress.toFixed(0)}% of goal${g['Deadline'] ? ' · due ' + escapeHtml(g['Deadline']) : ''}</p>
+    </div>`;
+  }).join('');
+}
+
 /* ------------------------------ page: forecast ------------------------------ */
 
 function renderForecastPage() {
