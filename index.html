@@ -399,20 +399,32 @@ function daysBetween(a, b) { return Math.round((b - a) / 86400000); }
 
 /* --------------------------- sheet fetching --------------------------- */
 
-async function fetchTab(tabName) {
-  const range = encodeURIComponent(`${tabName}!A:Z`);
-  const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${range}?key=${CONFIG.API_KEY}`;
+async function getExistingSheetTitles() {
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}?fields=sheets.properties.title&key=${CONFIG.API_KEY}`;
   const res = await fetch(url);
   if (!res.ok) {
     const body = await res.text().catch(() => '');
-    throw new Error(`${tabName} (${res.status}): ${body.slice(0, 200)}`);
+    throw new Error(`spreadsheet metadata (${res.status}): ${body.slice(0, 200)}`);
   }
   const data = await res.json();
-  return rowsToObjects(data.values || []);
+  return new Set((data.sheets || []).map(s => s.properties.title));
 }
-async function fetchOptionalTab(tabName) {
-  try { return await fetchTab(tabName); } catch (e) { return null; }
+
+async function batchFetchTabs(tabNames) {
+  if (!tabNames.length) return {};
+  const params = tabNames.map(t => `ranges=${encodeURIComponent(t + '!A:Z')}`).join('&');
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values:batchGet?${params}&key=${CONFIG.API_KEY}`;
+  const res = await fetch(url);
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    throw new Error(`batchGet (${res.status}): ${body.slice(0, 200)}`);
+  }
+  const data = await res.json();
+  const result = {};
+  (data.valueRanges || []).forEach((vr, i) => { result[tabNames[i]] = rowsToObjects(vr.values || []); });
+  return result;
 }
+
 function rowsToObjects(rows) {
   if (!rows.length) return [];
   const headers = rows[0].map(h => (h || '').trim());
@@ -430,21 +442,30 @@ async function loadAllData() {
 
   hideError();
   try {
-    const [clients, payments, leads] = await Promise.all([
-      fetchTab(CONFIG.TABS.clients), fetchTab(CONFIG.TABS.payments), fetchTab(CONFIG.TABS.leads),
-    ]);
-    state.clients = clients; state.payments = payments; state.leads = leads;
+    // Request 1: which tabs actually exist (lets optional tabs stay optional without failing the whole load)
+    const existingTitles = await getExistingSheetTitles();
 
-    const [expenses, invoices, cashBalances, goals, savings] = await Promise.all([
-      fetchOptionalTab(CONFIG.TABS.expenses), fetchOptionalTab(CONFIG.TABS.invoices),
-      fetchOptionalTab(CONFIG.TABS.cashBalance), fetchOptionalTab(CONFIG.TABS.goals),
-      fetchOptionalTab(CONFIG.TABS.savings),
-    ]);
-    state.expenses = expenses || []; state.invoices = invoices || []; state.cashBalances = cashBalances || [];
-    state.goals = goals || []; state.savings = savings || [];
-    state.expensesConfigured = expenses !== null;
-    state.savingsConfigured = savings !== null;
-    state.salesConfigured = leads.length > 0 && leads.some(l => 'Appointments' in l || 'Deals Closed' in l);
+    const required = [CONFIG.TABS.clients, CONFIG.TABS.payments, CONFIG.TABS.leads];
+    const missingRequired = required.filter(t => !existingTitles.has(t));
+    if (missingRequired.length) throw new Error(`Missing required tab(s): ${missingRequired.join(', ')}`);
+
+    const optionalTabs = [CONFIG.TABS.expenses, CONFIG.TABS.invoices, CONFIG.TABS.cashBalance, CONFIG.TABS.goals, CONFIG.TABS.savings];
+    const tabsToFetch = [...required, ...optionalTabs.filter(t => existingTitles.has(t))];
+
+    // Request 2: every present tab's data in one call
+    const data = await batchFetchTabs(tabsToFetch);
+
+    state.clients = data[CONFIG.TABS.clients] || [];
+    state.payments = data[CONFIG.TABS.payments] || [];
+    state.leads = data[CONFIG.TABS.leads] || [];
+    state.expenses = data[CONFIG.TABS.expenses] || [];
+    state.invoices = data[CONFIG.TABS.invoices] || [];
+    state.cashBalances = data[CONFIG.TABS.cashBalance] || [];
+    state.goals = data[CONFIG.TABS.goals] || [];
+    state.savings = data[CONFIG.TABS.savings] || [];
+    state.expensesConfigured = existingTitles.has(CONFIG.TABS.expenses);
+    state.savingsConfigured = existingTitles.has(CONFIG.TABS.savings);
+    state.salesConfigured = state.leads.length > 0 && state.leads.some(l => 'Appointments' in l || 'Deals Closed' in l);
 
     renderEverything();
     document.getElementById('header-subtitle').textContent = 'Live from Google Sheets · updated ' + new Date().toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit' });
