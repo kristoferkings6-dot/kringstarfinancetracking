@@ -185,7 +185,16 @@
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-4" id="expense-kpis"></div>
         <div class="grid grid-cols-1 lg:grid-cols-5 gap-4">
           <div class="lg:col-span-2 bg-card rounded-2xl p-5 border border-white/5">
-            <h3 class="font-display font-700 mb-3">By Category (YTD)</h3>
+            <div class="flex items-center justify-between mb-3">
+              <h3 class="font-display font-700">By Category</h3>
+              <select id="expense-cat-month-select" class="bg-navy border border-white/10 text-xs rounded-lg px-2 py-1.5">
+                <option value="all">Full Year</option>
+                <option value="0">January</option><option value="1">February</option><option value="2">March</option>
+                <option value="3">April</option><option value="4">May</option><option value="5">June</option>
+                <option value="6">July</option><option value="7">August</option><option value="8">September</option>
+                <option value="9">October</option><option value="10">November</option><option value="11">December</option>
+              </select>
+            </div>
             <div class="relative h-56"><canvas id="atlas-expense-donut"></canvas></div>
             <div id="atlas-expense-legend" class="mt-4 space-y-2 text-xs"></div>
           </div>
@@ -381,7 +390,27 @@ function fmtCompact(amountNGN) {
 }
 function parseDate(v) {
   if (!v) return null;
-  const d = new Date(v);
+  if (v instanceof Date) return isNaN(v.getTime()) ? null : v;
+  const str = String(v).trim();
+
+  // ISO format: YYYY-MM-DD (unambiguous)
+  let m = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (m) {
+    const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  // DD-MM-YYYY or DD/MM/YYYY: how Google Sheets displays dates in this workbook's locale.
+  // Native Date() guesses US MM-DD-YYYY order instead, which silently corrupts or drops these rows.
+  m = str.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})$/);
+  if (m) {
+    const day = Number(m[1]), month = Number(m[2]), year = Number(m[3]);
+    const d = new Date(year, month - 1, day);
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  // Fallback for any other format (e.g. "June 17, 2026")
+  const d = new Date(str);
   return isNaN(d.getTime()) ? null : d;
 }
 function yearFromRow(row, dateField = 'Date') {
@@ -823,8 +852,18 @@ function renderExpensesPage() {
   yearSelect.value = String(state.expenseYear);
   const year = state.expenseYear;
 
+  const catMonthSelect = document.getElementById('expense-cat-month-select');
+  if (state.expenseCatMonth === undefined) state.expenseCatMonth = 'all';
+  catMonthSelect.value = state.expenseCatMonth;
+
+  const catRows = expensesForYear(year).filter(e => {
+    if (state.expenseCatMonth === 'all') return true;
+    const d = parseDate(e['Date']);
+    return d && d.getMonth() === Number(state.expenseCatMonth);
+  });
+
   const byCat = {};
-  expensesForYear(year).forEach(e => { const cat = (e['Category']||'Uncategorized').trim(); byCat[cat] = (byCat[cat]||0) + parseMoney(e['Amount']); });
+  catRows.forEach(e => { const cat = (e['Category']||'Uncategorized').trim(); byCat[cat] = (byCat[cat]||0) + parseMoney(e['Amount']); });
   const cats = Object.keys(byCat);
   const vals = cats.map(c => byCat[c]);
   const total = vals.reduce((a,b)=>a+b,0);
@@ -1093,6 +1132,11 @@ document.getElementById('currency-selector').addEventListener('change', e => { s
 
 document.getElementById('expense-year-select').addEventListener('change', e => {
   state.expenseYear = parseInt(e.target.value, 10);
+  renderExpensesPage();
+});
+
+document.getElementById('expense-cat-month-select').addEventListener('change', e => {
+  state.expenseCatMonth = e.target.value;
   renderExpensesPage();
 });
 
