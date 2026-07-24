@@ -194,6 +194,21 @@
             <div class="relative h-56"><canvas id="atlas-expense-monthly"></canvas></div>
           </div>
         </div>
+        <div class="bg-card rounded-2xl p-5 border border-white/5 overflow-x-auto">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="font-display font-700">Monthly Expense Summary</h3>
+            <select id="expense-year-select" class="bg-navy border border-white/10 text-xs rounded-lg px-2 py-1.5"></select>
+          </div>
+          <table class="w-full text-sm min-w-[420px]">
+            <thead><tr class="text-left text-[11px] uppercase tracking-wider text-slate-400 border-b border-white/10">
+              <th class="py-2 px-2">Month</th><th class="py-2 px-2">Total</th><th class="py-2 px-2">vs. Previous Month</th>
+            </tr></thead>
+            <tbody id="monthly-expense-table-body" class="divide-y divide-white/5"></tbody>
+            <tfoot><tr class="border-t border-white/10 font-semibold">
+              <td class="py-2 px-2">Total (Year)</td><td id="monthly-expense-year-total" class="py-2 px-2 tabular"></td><td></td>
+            </tr></tfoot>
+          </table>
+        </div>
       </div>
     </section>
 
@@ -782,6 +797,7 @@ function renderExpensesPage() {
   const withdrawals = categorySpendYTD('Personal Withdrawals');
 
   const kpis = [
+    { label: 'Total Expenses (YTD)', value: fmtMoney(totalExpensesYTD()), color: 'text-gold-light' },
     { label: 'Expenses This Month', value: fmtMoney(expenseThisMonth()) },
     { label: 'Expense Growth (MoM)', value: growth===null?'—':(growth>=0?'+':'')+growth.toFixed(1)+'%' },
     { label: 'Biggest Category (YTD)', value: biggestCat ? `${escapeHtml(biggestCat[0])} — ${fmtCompact(biggestCat[1])}` : '—' },
@@ -791,10 +807,22 @@ function renderExpensesPage() {
     { label: 'Owner Withdrawals (YTD)', value: fmtMoney(withdrawals) },
   ];
   document.getElementById('expense-kpis').innerHTML = kpis.map(c => `
-    <div class="bg-card rounded-2xl p-4 border border-white/5"><p class="text-[11px] uppercase text-slate-400 mb-2">${c.label}</p><p class="font-display font-800 text-lg tabular">${c.value}</p></div>
+    <div class="bg-card rounded-2xl p-4 border border-white/5"><p class="text-[11px] uppercase text-slate-400 mb-2">${c.label}</p><p class="font-display font-800 text-lg tabular ${c.color||''}">${c.value}</p></div>
   `).join('');
 
-  const year = new Date().getFullYear();
+  // Build/refresh the year dropdown from whatever years actually appear in Expenses data
+  const yearsInData = new Set([new Date().getFullYear()]);
+  state.expenses.forEach(e => { const d = parseDate(e['Date']); if (d) yearsInData.add(d.getFullYear()); });
+  const sortedYears = Array.from(yearsInData).sort((a,b) => b - a);
+  const yearSelect = document.getElementById('expense-year-select');
+  if (yearSelect.dataset.built !== sortedYears.join(',')) {
+    yearSelect.innerHTML = sortedYears.map(y => `<option value="${y}">${y}</option>`).join('');
+    yearSelect.dataset.built = sortedYears.join(',');
+  }
+  if (!state.expenseYear) state.expenseYear = new Date().getFullYear();
+  yearSelect.value = String(state.expenseYear);
+  const year = state.expenseYear;
+
   const byCat = {};
   expensesForYear(year).forEach(e => { const cat = (e['Category']||'Uncategorized').trim(); byCat[cat] = (byCat[cat]||0) + parseMoney(e['Amount']); });
   const cats = Object.keys(byCat);
@@ -821,6 +849,23 @@ function renderExpensesPage() {
     options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
       scales: { x: { ticks: { color: '#64748B' } }, y: { ticks: { color: '#64748B', callback: v => fmtCompact(v) } } } },
   });
+
+  // Show all 12 months for a past year; only up to the current month for the current year
+  const now = new Date();
+  const lastMonthIdx = (year === now.getFullYear()) ? now.getMonth() : 11;
+  const rows = [];
+  for (let i = 0; i <= lastMonthIdx; i++) {
+    const prev = i > 0 ? totals[i-1] : null;
+    const change = (prev !== null && prev > 0) ? ((totals[i]-prev)/prev)*100 : null;
+    rows.push({ month: MONTH_NAMES[i], total: totals[i], change });
+  }
+  document.getElementById('monthly-expense-table-body').innerHTML = rows.map(r => {
+    const changeText = r.change===null ? '—' : (r.change>=0?'+':'') + r.change.toFixed(1) + '%';
+    const changeColor = r.change===null ? 'text-slate-500' : (r.change>=0?'text-red-400':'text-green-400');
+    return `<tr><td class="py-2 px-2 font-medium">${r.month}</td><td class="py-2 px-2 tabular">${fmtMoney(r.total)}</td><td class="py-2 px-2 tabular ${changeColor}">${changeText}</td></tr>`;
+  }).join('');
+  const yearTotal = totals.reduce((a,b)=>a+b,0);
+  setText('monthly-expense-year-total', fmtMoney(yearTotal));
 }
 
 function renderProfitPage() {
@@ -1045,6 +1090,11 @@ document.querySelectorAll('.nav-item').forEach(btn => {
 });
 
 document.getElementById('currency-selector').addEventListener('change', e => { state.currency = e.target.value; renderEverything(); });
+
+document.getElementById('expense-year-select').addEventListener('change', e => {
+  state.expenseYear = parseInt(e.target.value, 10);
+  renderExpensesPage();
+});
 
 document.querySelectorAll('.cf-btn').forEach(btn => {
   btn.addEventListener('click', () => {
