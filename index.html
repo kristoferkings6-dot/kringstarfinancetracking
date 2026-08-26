@@ -62,6 +62,36 @@
     .bg-card, .bg-navy { background: white !important; border: 1px solid #ddd !important; color: black !important; }
     * { color: black !important; }
   }
+  /* Financial cockpit layer: improve hierarchy and decision context without changing the existing data contract. */
+  body{background:radial-gradient(1100px 620px at 42% -18%,rgba(39,68,106,.24),transparent 62%),radial-gradient(800px 500px at 86% 0,rgba(242,193,75,.06),transparent 66%),#080e1b}
+  #sidebar{background:rgba(9,18,32,.96);border-color:rgba(188,205,229,.12)}
+  main{background:transparent}
+  header{background:rgba(8,14,27,.76)!important;border-color:rgba(188,205,229,.12)!important;min-height:78px}
+  header h1,.font-display{font-family:'Space Grotesk','Inter',sans-serif;letter-spacing:-.035em}
+  header h1{font-size:1.35rem}
+  #topbar-actions{gap:.45rem}
+  #topbar-actions select,#topbar-actions button{height:36px;transition:transform .16s ease,background .16s ease,border-color .16s ease}
+  #topbar-actions button:hover{transform:translateY(-1px);border-color:rgba(242,193,75,.42)}
+  #topbar-actions #refresh-btn{box-shadow:0 8px 22px rgba(242,193,75,.14)}
+  .bg-card{background:linear-gradient(145deg,rgba(22,35,55,.98),rgba(13,24,40,.96))!important;box-shadow:0 14px 42px rgba(0,0,0,.13)}
+  #page-overview>.bg-card:first-child{border:1px solid rgba(242,193,75,.24);background:linear-gradient(135deg,rgba(28,43,65,.98),rgba(17,29,46,.96))!important;box-shadow:0 20px 50px rgba(0,0,0,.18),0 0 0 1px rgba(242,193,75,.04)}
+  #page-overview>.bg-card:first-child h3:before{content:'LIVE SIGNAL';display:inline-flex;align-items:center;margin-right:9px;padding:3px 7px;border-radius:99px;border:1px solid rgba(103,217,174,.26);color:#67d9ae;font:9px 'IBM Plex Mono';letter-spacing:.12em;vertical-align:2px}
+  #overview-kpis,#revenue-kpis,#expense-kpis,#profit-kpis{align-items:stretch}
+  #overview-kpis>div,#revenue-kpis>div,#expense-kpis>div,#profit-kpis>div{min-height:96px;border:1px solid rgba(188,205,229,.1);background:linear-gradient(145deg,rgba(22,35,55,.98),rgba(13,24,40,.96));box-shadow:0 14px 34px rgba(0,0,0,.1);transition:transform .18s ease,border-color .18s ease}
+  #overview-kpis>div:hover,#revenue-kpis>div:hover,#expense-kpis>div:hover,#profit-kpis>div:hover{transform:translateY(-2px);border-color:rgba(242,193,75,.28)}
+  #overview-kpis>div p:first-child,#revenue-kpis>div p:first-child,#expense-kpis>div p:first-child,#profit-kpis>div p:first-child{font-family:'IBM Plex Mono';letter-spacing:.08em}
+  canvas{filter:saturate(.88)}
+  table tbody tr{transition:background .16s ease}
+  table tbody tr:hover{background:rgba(242,193,75,.055)}
+  select,button{outline-offset:3px}
+  #mobile-menu{display:none}
+  @media(max-width:700px){
+    #mobile-menu{display:grid;place-items:center;width:34px;height:34px;flex:0 0 34px;color:#9aa9bc;background:transparent;border:1px solid rgba(188,205,229,.12);border-radius:8px}
+    #sidebar{position:fixed!important;left:0;top:0;bottom:0;width:240px!important;max-width:84vw;z-index:60;transform:translateX(-105%);transition:transform .22s cubic-bezier(.23,1,.32,1);box-shadow:24px 0 70px rgba(0,0,0,.42)}
+    #sidebar.mobile-open{transform:translateX(0)}
+    header{padding:13px 15px!important;align-items:flex-start}header h1{font-size:1.12rem}.topbar-title{display:flex;align-items:center;gap:10px}
+    #topbar-actions{width:100%;overflow-x:auto;padding-bottom:1px;flex-wrap:nowrap}#topbar-actions>*{flex:0 0 auto}.p-6{padding:1rem!important}#overview-kpis,#revenue-kpis,#expense-kpis,#profit-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.bg-card{border-radius:14px!important}
+  }
 </style>
 </head>
 <body class="font-sans text-white antialiased flex">
@@ -100,6 +130,7 @@
 <main class="flex-1 min-w-0">
 
   <header class="sticky top-0 z-30 bg-navy/90 backdrop-blur border-b border-white/5 px-6 py-4 flex flex-wrap items-center justify-between gap-3">
+    <button id="mobile-menu" aria-label="Open navigation">☰</button>
     <div>
       <h1 class="font-display font-800 text-xl">Financial Overview</h1>
       <p id="header-subtitle" class="text-xs text-slate-500">Live from Google Sheets · updated moments ago</p>
@@ -1171,6 +1202,8 @@ document.querySelectorAll('.cf-btn').forEach(btn => {
 })();
 
 document.getElementById('refresh-btn').addEventListener('click', loadAllData);
+document.getElementById('mobile-menu').addEventListener('click', () => document.getElementById('sidebar').classList.toggle('mobile-open'));
+document.getElementById('sidebar-toggle').addEventListener('click', () => document.getElementById('sidebar').classList.remove('mobile-open'));
 document.getElementById('export-print').addEventListener('click', () => window.print());
 
 document.getElementById('export-csv').addEventListener('click', () => {
